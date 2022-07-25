@@ -9,6 +9,7 @@ This file handles localized forecasts, based on GMAO's GEOS CF and OpenAQ data
 """
 
 # Import python native libs
+import copy
 import sys
 import os
 import fsspec
@@ -30,17 +31,17 @@ from sklearn.metrics import mean_squared_error as MSE_1
 import shap
 from sklearn.base import BaseEstimator
 from sklearn.ensemble import GradientBoostingRegressor
-from ipywidgets import interact, widgets
-from plotly.offline import iplot, plot, init_notebook_mode
-init_notebook_mode(connected=True)
-import cufflinks as cf
-cf.go_offline(connected=True)
+#from ipywidgets import interact, widgets
+#from plotly.offline import iplot, plot, init_notebook_mode
+#init_notebook_mode(connected=True)
+#import cufflinks as cf
+#cf.go_offline(connected=True)
 import warnings
 warnings.filterwarnings("ignore")
 
 
 #ZARR_TEMPLATE = ["geos-cf/zarr/geos-cf.met_tavg_1hr_g1440x721_x1.zarr","geos-cf/zarr/geos-cf.chm_tavg_1hr_g1440x721_v1.zarr"]
-ZARR_TEMPLATE = ["geos-cf/zarr/geos-cf-rpl.zarr"]
+ZARR_TEMPLATE = ["/discover/nobackup/projects/gmao/geos_cf_dev/cakelle2/zarr/geos-cf-rpl.zarr"]
 S3_TEMPLATE = "s3://eis-dh-fire/geos-cf-rpl.zarr"
 OPENDAP_TEMPLATE = "https://opendap.nccs.nasa.gov/dods/gmao/geos-cf/fcast/met_tavg_1hr_g1440x721_x1.latest"
 M2_TEMPLATE = "/home/ftei-dsw/Projects/SurfNO2/data/M2/{c}/small/*.{c}.%Y%m*.nc4"
@@ -473,6 +474,36 @@ class ObsSite:
         return 0
 
 
+    def write_site(self,ofile=None,discard_data=True,overwrite=False):
+
+        """Write site to pickle object.
+        
+        Parameters
+        ----------
+        ofile: str
+            output file name.
+        discard_data: bool
+            if true, will discard all data (observations, model) before writing
+        """
+        if ofile is None:
+            ofile = self._name.replace(' ','')+'_'+self._species+'.pkl'
+        if not overwrite:
+            assert(~os.path.isfile(ofile))
+        if discard_data:
+            tmp = copy.deepcopy(self)
+            tmp._obs   = _set_none(tmp._obs)
+            tmp._mod   = _set_none(tmp._mod)
+            tmp.Xtrain = _set_none(tmp.Xtrain)
+            tmp.Xtest  = _set_none(tmp.Xtest)
+            tmp.ytrain = _set_none(tmp.ytrain)
+            tmp.ytest  = _set_none(tmp.ytest)
+        else:
+            tmp = self        
+        pickle.dump( tmp, open(ofile, 'wb'), protocol=4 )
+        print('Site written to {}'.format(ofile))
+        return
+    
+    
     def predict(self,add_obs=True, model_type = "xgboost-tuned", **kwargs):
         
         """Make prediction for given time window and return predicted values along with observations
@@ -1094,10 +1125,15 @@ class ObsSite:
         if output == "confidence_intervals_dataframe":
             return self.ConfidenceIntervals(OUTPUT = "dataframe")
 
-
             
 ## General Functions
 
+def _set_none(obj):
+    '''Helper routine to delete object'''
+    if obj is not None:
+        del(obj)
+    obj = None
+    return obj
 
 
 def read_openaq(url,reference_grade_only=True,silent=False,remove_outlier=0,**kwargs):
