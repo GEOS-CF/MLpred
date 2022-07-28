@@ -37,6 +37,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 #import cufflinks as cf
 #cf.go_offline(connected=True)
 import warnings
+import json
 warnings.filterwarnings("ignore")
 
 
@@ -349,6 +350,7 @@ class ObsSite:
             kwargs['end'] = self._obs['time'].max()
         mod = self._read_model(self._lon,self._lat,**kwargs)
         self._mod = self._mod.merge(mod,how='outer') if self._mod is not None else mod
+        self._mod = self._mod.sort_values(by='time')
         return
 
 
@@ -393,9 +395,8 @@ class ObsSite:
         xvar = [i for i in dat.columns if i not in blacklist]
         X = dat[xvar]
         y = dat[yvar]
-        fvar = None
+        fvar = 'pm25_rh35_gcc' if self._species=='pm25' else self._species
         if inc:
-            fvar = 'pm25_rh35_gcc' if self._species=='pm25' else self._species
             if fvar not in X:
                 print('Warning: target species is not an input feature - cannot do increment ML (set inc=False to predict concentration instead)')
                 return -1
@@ -502,21 +503,38 @@ class ObsSite:
         pickle.dump( tmp, open(ofile, 'wb'), protocol=4 )
         print('Site written to {}'.format(ofile))
         return
+   
+    def write_json(self,ofile,latest_forecast=None,init_date=None,**kwargs):
+        
+        """Write site metadata to json file, along with latest forecast data (if provided)
+        """
+        # site metadata
+        idict = {}
+        idict['site'] = {'site_name':self._name,'site_id':self._id,'site_lat':self._lat,'site_lon':self._lon,'species':self._species}
+        # latest_forecast
+        if latest_forecast is not None:
+            unit = 'ppbv' if self._species != 'pm25' else 'ugm-3'
+            idict['latest_forecast'] = {'forecast_initialization_date':init_date,'species':self._species,'unit':unit,'data':latest_forecast}
+        # write out
+        with open(ofile,"w") as o:
+            json.dump(idict, o, **kwargs)
+            print('Site data written to {}'.format(ofile))
+        return
+ 
     
-    
-    def predict(self,add_obs=True, model_type = "xgboost-tuned", **kwargs):
+    def predict(self, add_obs=True, add_orig_model=True, model_type = "xgboost-tuned", **kwargs):
         
         """Make prediction for given time window and return predicted values along with observations
         
         Parameters
         ----------
-        add_obs: dataframe
+        add_obs: bool 
             add observation data to geos-cf model data
+        add_orig_model: bool 
+            add original model forecast (uncorrected) 
         model_type: str
             predict using a predefined model, or default model, the predefined model is hyperparameter tuned
         minval: float
-    
-            
         
         Returns
         -------
@@ -546,6 +564,9 @@ class ObsSite:
         
         df = dat[['time','value']].copy()
         df['prediction'] = pred
+        if add_orig_model:
+            assert(self._fvar in dat)
+            df['orig_model'] = dat[self._fvar]
         df.rename(columns={'value':'observation'},inplace=True)
         return df
 
@@ -576,7 +597,8 @@ class ObsSite:
         fig.update_layout(legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="right",x=1.),legend_title='')
         
         return fig
-    
+   
+ 
     def explain(self,plot=False,feature=False):
         """ plot SHAP values to explain how the features are driving the predictions
         
@@ -745,6 +767,7 @@ class ObsSite:
                 merge_on.append('lev')
             mod = mod.merge(d,on=merge_on)
         mod['time'] = [pd.to_datetime(i) for i in mod['time']]
+        mod = mod.sort_values(by='time')
         if resample is not None:
             mod = mod.set_index('time').resample(resample).mean().reset_index()
             print('Resampled model data to: {}'.format(resample))
