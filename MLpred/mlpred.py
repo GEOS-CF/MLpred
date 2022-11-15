@@ -47,7 +47,7 @@ S3_TEMPLATE = "s3://eis-dh-fire/geos-cf-rpl.zarr"
 OPENDAP_TEMPLATE = "https://opendap.nccs.nasa.gov/dods/gmao/geos-cf/fcast/met_tavg_1hr_g1440x721_x1.latest"
 M2_TEMPLATE = "/home/ftei-dsw/Projects/SurfNO2/data/M2/{c}/small/*.{c}.%Y%m*.nc4"
 M2_COLLECTIONS = ["tavg1_2d_flx_Nx","tavg1_2d_lfo_Nx","tavg1_2d_slv_Nx"]
-OPENAQ_TEMPLATE = 'https://api.openaq.org/v2//measurements?date_from={Y1}-{M1}-01T00%3A00%3A00%2B00%3A00&date_to={Y2}-{M2}-01T00%3A00%3A00%2B00%3A00&limit=10000&page=1&offset=0&sort=asc&radius=1000&location_id={ID}&parameter={PARA}&order_by=datetime'
+OPENAQ_TEMPLATE = 'https://api.openaq.org/v2//measurements?date_from={Y1}-{M1}-{D1}T00%3A00%3A00%2B00%3A00&date_to={Y2}-{M2}-{D2}T00%3A00%3A00%2B00%3A00&limit=10000&page=1&offset=0&sort=asc&radius=1000&location_id={ID}&parameter={PARA}&order_by=datetime'
 
 # list with gas names. Used to identify fields that need to be converted from v/v to ppbv
 DEFAULT_GASES = ['co', 'hcho', 'no','no2', 'noy', 'o3']
@@ -783,7 +783,7 @@ class ObsSite:
         return mod
 
 
-    def _read_openaq(self,start=dt.datetime(2018,1,1),end=None,normalize=False,**kwargs):
+    def _read_openaq(self,start=dt.datetime(2018,1,1),end=None,normalize=False,url_template=None,**kwargs):
         
         """ Read OpenAQ observations and convert to ppbv
         
@@ -806,7 +806,8 @@ class ObsSite:
         """
         
         end = start+relativedelta(years=1) if end is None else end
-        url = OPENAQ_TEMPLATE.replace('{ID}',str(self._id)).replace('{PARA}',self._species).replace('{Y1}',str(start.year)).replace('{M1}','{:02d}'.format(start.month)).replace('{D1}','{:02d}'.format(start.day)).replace('{Y2}',str(end.year)).replace('{M2}','{:02d}'.format(end.month)).replace('{D2}','{:02d}'.format(end.day))
+        urlt = url_template if url_template is not None else OPENAQ_TEMPLATE
+        url  = urlt.replace('{ID}',str(self._id)).replace('{PARA}',self._species).replace('{Y1}',str(start.year)).replace('{M1}','{:02d}'.format(start.month)).replace('{D1}','{:02d}'.format(start.day)).replace('{Y2}',str(end.year)).replace('{M2}','{:02d}'.format(end.month)).replace('{D2}','{:02d}'.format(end.day))
         allobs = read_openaq(url,silent=self._silent,**kwargs)
         if allobs is None:
             return None
