@@ -545,8 +545,8 @@ class ObsSite:
         if add_obs:
             dat = self._merge(**kwargs)
         else:
-            start = kwargs['start'] if 'start' in kwargs else dat['time'].min()
-            end = kwargs['end'] if 'end' in kwargs else dat['time'].max()
+            start = kwargs['start'] if 'start' in kwargs else self._mod['time'].min()
+            end = kwargs['end'] if 'end' in kwargs else self._mod['time'].max()
             dat = self._mod.loc[(self._mod['time']>=start)&(self._mod['time']<=end)].copy()
             if 'value' not in dat:
                 dat['value'] = [np.nan for i in range(dat.shape[0])]
