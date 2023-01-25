@@ -43,7 +43,7 @@ warnings.filterwarnings("ignore")
 
 #ZARR_TEMPLATE = ["geos-cf/zarr/geos-cf.met_tavg_1hr_g1440x721_x1.zarr","geos-cf/zarr/geos-cf.chm_tavg_1hr_g1440x721_v1.zarr"]
 ZARR_TEMPLATE = ["/discover/nobackup/projects/gmao/geos_cf_dev/cakelle2/zarr/geos-cf-rpl.zarr"]
-S3_TEMPLATE = "s3://eis-dh-fire/geos-cf-rpl.zarr"
+S3_TEMPLATE = "s3://dh-eis-fire-usw2-shared/geos-cf-rpl.zarr"
 OPENDAP_TEMPLATE = "https://opendap.nccs.nasa.gov/dods/gmao/geos-cf/fcast/met_tavg_1hr_g1440x721_x1.latest"
 M2_TEMPLATE = "/home/ftei-dsw/Projects/SurfNO2/data/M2/{c}/small/*.{c}.%Y%m*.nc4"
 M2_COLLECTIONS = ["tavg1_2d_flx_Nx","tavg1_2d_lfo_Nx","tavg1_2d_slv_Nx"]
